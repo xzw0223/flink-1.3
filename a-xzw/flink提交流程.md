@@ -61,7 +61,19 @@
    请求container启动TaskManager,
    
    
-### YarnTaskExecutorRunner    
+### YarnTaskExecutorRunner
+
+runTaskManagerSecurely
+TaskManagerRunner.runTaskManagerProcessSecurely
+执行taskExecutor.start方法,通过rpcService.start调用,最终会执行到taskExecutor.onStart方法 
+
+
+
+执行taskExecutor注册到RM中,并报告自己的slot,resource接收TaskExecutor的注册,
+ResourceManager.sendSlotReport中将taskExecutor的slot注册到slotManager中(
+**小细节 实际是注册到ResourceManager中的SlotManager<font color=red>实际存在SlotTracker中哦<\font>**)
+并将slot添加到两个Map中一个是存储所有slot的Map,一个是所有Free的slot Map 
+       
   
    
    

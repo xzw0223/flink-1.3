@@ -85,8 +85,10 @@ public class DefaultSlotTracker implements SlotTracker {
 
         DeclarativeTaskManagerSlot slot =
                 new DeclarativeTaskManagerSlot(slotId, resourceProfile, taskManagerConnection);
+        // 添加map中, 一个中所有的slot一个是空间的slot
         slots.put(slotId, slot);
         freeSlots.put(slotId, slot);
+        // TODO 尽快把slot分配出去呗 你kin你擦
         slotStatusStateReconciler.executeStateTransition(slot, assignedJob);
     }
 
@@ -269,7 +271,11 @@ public class DefaultSlotTracker implements SlotTracker {
             final SlotState reportedSlotState =
                     jobId == null ? SlotState.FREE : SlotState.ALLOCATED;
             final SlotState trackedSlotState = slot.getState();
-
+            //TODO 根据调用谁调用的accept去看对应的方法,在当前的类中,不是子类
+            // 根据slot的状态进行转换,分配
+            // toFreeSlot.accept       执行对应的方法  this.transitionSlotToFree
+            // toPendingSlot.accept    执行对应的方法  this.transitionSlotToPending
+            // toAllocatedSlot.accept  执行对应的方法  this.transitionSlotToAllocated
             if (reportedSlotState == SlotState.FREE) {
                 switch (trackedSlotState) {
                     case FREE:

@@ -330,6 +330,7 @@ public class DeclarativeSlotManager implements SlotManager {
             }
 
             // register the new slots
+            // 注册新的slot
             for (SlotStatus slotStatus : initialSlotReport) {
                 slotTracker.addSlot(
                         slotStatus.getSlotID(),

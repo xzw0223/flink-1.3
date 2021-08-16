@@ -85,6 +85,7 @@ public class TaskExecutorToResourceManagerConnection
                     TaskExecutorRegistrationSuccess,
                     TaskExecutorRegistrationRejection>
             generateRegistration() {
+        // 向resourceManager注册
         return new TaskExecutorToResourceManagerConnection.ResourceManagerRegistration(
                 log,
                 rpcService,
@@ -94,6 +95,10 @@ public class TaskExecutorToResourceManagerConnection
                 taskExecutorRegistration);
     }
 
+    /**
+     * TODO 当向RM 注册成功后调用此方法
+     * @param success
+     */
     @Override
     protected void onRegistrationSuccess(TaskExecutorRegistrationSuccess success) {
         log.info(
@@ -154,8 +159,9 @@ public class TaskExecutorToResourceManagerConnection
                 ResourceManagerId fencingToken,
                 long timeoutMillis)
                 throws Exception {
-
+            // RetryingRegistration.register中调用了该方法
             Time timeout = Time.milliseconds(timeoutMillis);
+            // 向resourceManager注册自己(teakExecutor)
             return resourceManager.registerTaskExecutor(taskExecutorRegistration, timeout);
         }
     }

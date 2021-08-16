@@ -159,6 +159,7 @@ public abstract class RetryingRegistration<
                     rpcGatewayFuture.thenAcceptAsync(
                             (G rpcGateway) -> {
                                 log.info("Resolved {} address, beginning registration", targetName);
+                                // TODO 开始注册
                                 register(
                                         rpcGateway,
                                         1,
@@ -218,8 +219,8 @@ public abstract class RetryingRegistration<
                     attempt,
                     timeoutMillis);
             CompletableFuture<RegistrationResponse> registrationFuture =
+                    // TODO 执行该方法,进行注册
                     invokeRegistration(gateway, fencingToken, timeoutMillis);
-
             // if the registration was successful, let the TaskExecutor know
             CompletableFuture<Void> registrationAcceptFuture =
                     registrationFuture.thenAcceptAsync(

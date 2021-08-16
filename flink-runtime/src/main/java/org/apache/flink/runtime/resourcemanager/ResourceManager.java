@@ -438,6 +438,7 @@ public abstract class ResourceManager<WorkerType extends ResourceIDRetrievable>
                         if (throwable != null) {
                             return new RegistrationResponse.Failure(throwable);
                         } else {
+                            // 注册 ->
                             return registerTaskExecutorInternal(
                                     taskExecutorGateway, taskExecutorRegistration);
                         }
@@ -452,6 +453,9 @@ public abstract class ResourceManager<WorkerType extends ResourceIDRetrievable>
                 getMainThreadExecutor());
     }
 
+    /**
+     * TODO RM接收taskManager中taskExecutor报告的slot
+     */
     @Override
     public CompletableFuture<Acknowledge> sendSlotReport(
             ResourceID taskManagerResourceId,
@@ -462,6 +466,7 @@ public abstract class ResourceManager<WorkerType extends ResourceIDRetrievable>
                 taskExecutors.get(taskManagerResourceId);
 
         if (workerTypeWorkerRegistration.getInstanceID().equals(taskManagerRegistrationId)) {
+            // 向slotManager注册slot
             if (slotManager.registerTaskManager(
                     workerTypeWorkerRegistration,
                     slotReport,

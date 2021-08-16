@@ -25,8 +25,7 @@ import org.apache.flink.runtime.taskexecutor.TaskExecutorGateway;
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
 /**
- * This class is responsible for grouping the TaskExecutorGateway and the InstanceID of a registered
- * task executor.
+ * This class is responsible for grouping the TaskExecutorGateway and the InstanceID of a registered task executor.
  */
 public class TaskExecutorConnection {
 
