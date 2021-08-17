@@ -315,6 +315,7 @@ public class AkkaRpcService implements RpcService {
         ClassLoader classLoader = getClass().getClassLoader();
 
         @SuppressWarnings("unchecked")
+        // 通过代理转发,最终转发到akkaInvocationHandler
         RpcServer server =
                 (RpcServer)
                         Proxy.newProxyInstance(

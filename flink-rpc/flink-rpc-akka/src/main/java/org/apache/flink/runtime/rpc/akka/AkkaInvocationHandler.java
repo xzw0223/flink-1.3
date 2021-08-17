@@ -114,6 +114,9 @@ class AkkaInvocationHandler implements InvocationHandler, AkkaBasedEndpoint, Rpc
         this.captureAskCallStack = captureAskCallStack;
     }
 
+    /**
+     * 代理调用的方法
+     */
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
         Class<?> declaringClass = method.getDeclaringClass();
@@ -213,6 +216,7 @@ class AkkaInvocationHandler implements InvocationHandler, AkkaBasedEndpoint, Rpc
         Annotation[][] parameterAnnotations = method.getParameterAnnotations();
         Time futureTimeout = extractRpcTimeout(parameterAnnotations, args, timeout);
 
+        // 将消息封装成RpcInvocation
         final RpcInvocation rpcInvocation =
                 createRpcInvocationMessage(
                         method.getDeclaringClass().getSimpleName(),
@@ -224,6 +228,7 @@ class AkkaInvocationHandler implements InvocationHandler, AkkaBasedEndpoint, Rpc
 
         final Object result;
 
+        // 如果返回值void 调用tell 通知一下就行了
         if (Objects.equals(returnType, Void.TYPE)) {
             tell(rpcInvocation);
 
@@ -237,6 +242,7 @@ class AkkaInvocationHandler implements InvocationHandler, AkkaBasedEndpoint, Rpc
             final Throwable callStackCapture = captureAskCallStack ? new Throwable() : null;
 
             // execute an asynchronous call
+            // 执行ask方法有返回值
             final CompletableFuture<?> resultFuture = ask(rpcInvocation, futureTimeout);
 
             final CompletableFuture<Object> completableFuture = new CompletableFuture<>();

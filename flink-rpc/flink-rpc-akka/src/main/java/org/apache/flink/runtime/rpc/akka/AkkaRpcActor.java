@@ -148,6 +148,7 @@ class AkkaRpcActor<T extends RpcEndpoint & RpcGateway> extends AbstractActor {
 
     @Override
     public Receive createReceive() {
+        // 根据不同的消息调用不同的方法
         return ReceiveBuilder.create()
                 .match(RemoteHandshakeMessage.class, this::handleHandshakeMessage)
                 .match(ControlMessages.class, this::handleControlMessage)
@@ -160,6 +161,7 @@ class AkkaRpcActor<T extends RpcEndpoint & RpcGateway> extends AbstractActor {
             mainThreadValidator.enterMainThread();
 
             try {
+                // 处理rpc消息
                 handleRpcMessage(message);
             } finally {
                 mainThreadValidator.exitMainThread();
@@ -179,6 +181,7 @@ class AkkaRpcActor<T extends RpcEndpoint & RpcGateway> extends AbstractActor {
     }
 
     private void handleControlMessage(ControlMessages controlMessage) {
+        // 控制消息
         try {
             switch (controlMessage) {
                 case START:
@@ -245,6 +248,7 @@ class AkkaRpcActor<T extends RpcEndpoint & RpcGateway> extends AbstractActor {
                                     "The rpc endpoint does not support the gateway %s.",
                                     handshakeMessage.getRpcGateway().getSimpleName())));
         } else {
+            // tell方式回应  握手成功的相应
             getSender().tell(new Status.Success(HandshakeSuccessMessage.INSTANCE), getSelf());
         }
     }

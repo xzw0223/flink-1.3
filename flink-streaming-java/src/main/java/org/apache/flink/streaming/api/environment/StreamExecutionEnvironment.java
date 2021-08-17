@@ -1965,6 +1965,7 @@ public class StreamExecutionEnvironment {
      */
     public JobExecutionResult execute(String jobName) throws Exception {
         Preconditions.checkNotNull(jobName, "Streaming Job name should not be null.");
+        // 生成StreamGraph
         final StreamGraph streamGraph = getStreamGraph();
         streamGraph.setJobName(jobName);
         return execute(streamGraph);

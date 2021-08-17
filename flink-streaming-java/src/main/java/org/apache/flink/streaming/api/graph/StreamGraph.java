@@ -610,6 +610,7 @@ public class StreamGraph implements Pipeline {
             OutputTag outputTag,
             StreamExchangeMode exchangeMode) {
 
+        // 当上游是测输出流时,递归调用,并传入测输出信息
         if (virtualSideOutputNodes.containsKey(upStreamVertexID)) {
             int virtualId = upStreamVertexID;
             upStreamVertexID = virtualSideOutputNodes.get(virtualId).f0;
@@ -624,6 +625,7 @@ public class StreamGraph implements Pipeline {
                     null,
                     outputTag,
                     exchangeMode);
+            // 当上游是partition时,递归调用,并传入partitioner信息
         } else if (virtualPartitionNodes.containsKey(upStreamVertexID)) {
             int virtualId = upStreamVertexID;
             upStreamVertexID = virtualPartitionNodes.get(virtualId).f0;
@@ -640,11 +642,16 @@ public class StreamGraph implements Pipeline {
                     outputTag,
                     exchangeMode);
         } else {
+            // TODO  真正构建StreamNode
+
+            // 上游节点
             StreamNode upstreamNode = getStreamNode(upStreamVertexID);
+            // 下游节点
             StreamNode downstreamNode = getStreamNode(downStreamVertexID);
 
             // If no partitioner was specified and the parallelism of upstream and downstream
             // operator matches use forward partitioning, use rebalance otherwise.
+            // 如果partitioner没有指定,则指定Forward或者Rebalance
             if (partitioner == null
                     && upstreamNode.getParallelism() == downstreamNode.getParallelism()) {
                 partitioner = new ForwardPartitioner<Object>();
@@ -681,7 +688,11 @@ public class StreamGraph implements Pipeline {
                             outputTag,
                             exchangeMode);
 
+            // source表示上游算子 target表示下游算子
+
+            // 上游的输出
             getStreamNode(edge.getSourceId()).addOutEdge(edge);
+            // 下游的输入
             getStreamNode(edge.getTargetId()).addInEdge(edge);
         }
     }

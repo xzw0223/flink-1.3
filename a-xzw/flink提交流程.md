@@ -82,6 +82,15 @@ ResourceManager.sendSlotReport中将taskExecutor的slot注册到slotManager中(
 
   
   
+  
+  
+  
+  
+  
+  
+  
+  
+Flink组件通信使用akka  数据传输用netty
 
 
 

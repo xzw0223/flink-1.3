@@ -116,6 +116,7 @@ public class StreamingJobGraphGenerator {
     }
 
     public static JobGraph createJobGraph(StreamGraph streamGraph, @Nullable JobID jobID) {
+        // 生成JobGraph
         return new StreamingJobGraphGenerator(streamGraph, jobID).createJobGraph();
     }
 
@@ -162,24 +163,31 @@ public class StreamingJobGraphGenerator {
 
     private JobGraph createJobGraph() {
         preValidate();
-        jobGraph.setJobType(streamGraph.getJobType());
 
+        // 设置stream还是batch
+        jobGraph.setJobType(streamGraph.getJobType());
+        // 是否启动近似本地恢复
         jobGraph.enableApproximateLocalRecovery(
                 streamGraph.getCheckpointConfig().isApproximateLocalRecoveryEnabled());
 
         // Generate deterministic hashes for the nodes in order to identify them across
         // submission iff they didn't change.
+        // TODO 广度优先遍历StreamGraph,并为每个StreamNode生成 hashId
+        //  保证如果提交的拓补图没有改变,则每次生成的都是一样的
         Map<Integer, byte[]> hashes =
                 defaultStreamGraphHasher.traverseStreamGraphAndGenerateHashes(streamGraph);
 
         // Generate legacy version hashes for backwards compatibility
+        // 用于向后兼容用的,老版本的生成 hash id
         List<Map<Integer, byte[]>> legacyHashes = new ArrayList<>(legacyStreamGraphHashers.size());
         for (StreamGraphHasher hasher : legacyStreamGraphHashers) {
             legacyHashes.add(hasher.traverseStreamGraphAndGenerateHashes(streamGraph));
         }
 
+        // TODO 生成JobVertex,JobEage等... 并尽可能的将多个节点chain在一起 ,属于Flink层的自动优化手段
         setChaining(hashes, legacyHashes);
 
+        // TODO 将每个JobVertex的入边集合也序列化到StreamConfig中(出边在 * setChaining * 中写入了  )
         setPhysicalEdges();
 
         setSlotSharingAndCoLocation();
@@ -367,6 +375,7 @@ public class StreamingJobGraphGenerator {
     private void setChaining(Map<Integer, byte[]> hashes, List<Map<Integer, byte[]>> legacyHashes) {
         // we separate out the sources that run as inputs to another operator (chained inputs)
         // from the sources that needs to run as the main (head) operator.
+        // 我们将作为另一个操作符(链式输入)的输入的源与需要作为主(头)操作符运行的源分开
         final Map<Integer, OperatorChainInfo> chainEntryPoints =
                 buildChainedInputsAndGetHeadInputs(hashes, legacyHashes);
         final Collection<OperatorChainInfo> initialEntryPoints =
@@ -376,7 +385,10 @@ public class StreamingJobGraphGenerator {
                         .collect(Collectors.toList());
 
         // iterate over a copy of the values, because this map gets concurrently modified
+        // 从头开始,查看是否可以chain在其
         for (OperatorChainInfo info : initialEntryPoints) {
+            // TODO 构建operator chain ,返回当前节点的物理出边: startNodeId != currentNodeId时
+            //       说明currentNode是chain中的子节点
             createChain(
                     info.getStartNodeId(),
                     1, // operators start at position 1 because 0 is for chained source inputs
@@ -393,7 +405,7 @@ public class StreamingJobGraphGenerator {
 
         Integer startNodeId = chainInfo.getStartNodeId();
         if (!builtVertices.contains(startNodeId)) {
-
+            // 过度用的出边集合,用来生成最终的JobEdge 不包括chain内部的变
             List<StreamEdge> transitiveOutEdges = new ArrayList<StreamEdge>();
 
             List<StreamEdge> chainableOutputs = new ArrayList<StreamEdge>();
@@ -401,6 +413,8 @@ public class StreamingJobGraphGenerator {
 
             StreamNode currentNode = streamGraph.getStreamNode(currentNodeId);
 
+            // 当前节点的出边分成 chainable 和 nonChainable两类,即 可以chain和不可以chain
+            // outEdge -> 一个operator可以发送到不同的算子,如果有多个算子,那么就有多个出边 TODO 个人以为
             for (StreamEdge outEdge : currentNode.getOutEdges()) {
                 if (isChainable(outEdge, streamGraph)) {
                     chainableOutputs.add(outEdge);
@@ -429,6 +443,7 @@ public class StreamingJobGraphGenerator {
                         chainEntryPoints);
             }
 
+            // 生成节点的一些显示信息  keyed Agg -> sink Unnamed....
             chainedNames.put(
                     currentNodeId,
                     createChainedName(
@@ -441,6 +456,7 @@ public class StreamingJobGraphGenerator {
                     currentNodeId,
                     createChainedPreferredResources(currentNodeId, chainableOutputs));
 
+            // 添加节点到chain中
             OperatorID currentOperatorId =
                     chainInfo.addNodeToChain(currentNodeId, chainedNames.get(currentNodeId));
 
@@ -454,11 +470,13 @@ public class StreamingJobGraphGenerator {
                         .addOutputFormat(currentOperatorId, currentNode.getOutputFormat());
             }
 
+            //  如果当前节点是起始节点,则直接创建一个JobVertex并返回一个StreamConfig,否则创建一个空的StreamConfig
             StreamConfig config =
                     currentNodeId.equals(startNodeId)
                             ? createJobVertex(startNodeId, chainInfo)
                             : new StreamConfig(new Configuration());
 
+            // 设置JobVertex的StreamConfig,基本是序列化StreamNode中的配置到StreamConfig
             setVertexConfig(
                     currentNodeId,
                     config,
@@ -467,25 +485,32 @@ public class StreamingJobGraphGenerator {
                     chainInfo.getChainedSources());
 
             if (currentNodeId.equals(startNodeId)) {
-
+                // 如果是chain的起始节点,标记成chain start (不是chain中的节点,也会被标记成 chain start)
                 config.setChainStart();
                 config.setChainIndex(chainIndex);
                 config.setOperatorName(streamGraph.getStreamNode(currentNodeId).getOperatorName());
 
+                // 将当前节点(headOfChain)与所有边相连
                 for (StreamEdge edge : transitiveOutEdges) {
+                    // 通过StreamEdge构建出JobEdge,创建IntermediateDateSet,用来将JobVertex和JobEdge相连
                     connect(startNodeId, edge);
                 }
 
+                // 把物理出边写入配置 部署会用到
                 config.setOutEdgesInOrder(transitiveOutEdges);
+                // 将chain中所有的子节点的StreamConfig写入到HeadOfChain,节点的CHAINED_TASK_CONFIG配置中
                 config.setTransitiveChainedTaskConfigs(chainedConfigs.get(startNodeId));
 
             } else {
+                // 如果是chain中的子节点
                 chainedConfigs.computeIfAbsent(
                         startNodeId, k -> new HashMap<Integer, StreamConfig>());
 
                 config.setChainIndex(chainIndex);
                 StreamNode node = streamGraph.getStreamNode(currentNodeId);
                 config.setOperatorName(node.getOperatorName());
+                // 将当前节点的StreamConfig添加到该chain的config集合中
+                // 关联chain内节点的配置信息到chain的起始节点上
                 chainedConfigs.get(startNodeId).put(currentNodeId, config);
             }
 
@@ -781,11 +806,15 @@ public class StreamingJobGraphGenerator {
 
         StreamConfig downStreamConfig = new StreamConfig(downStreamVertex.getConfiguration());
 
+        // 每一次循环 input数据+1
         downStreamConfig.setNumberOfNetworkInputs(downStreamConfig.getNumberOfNetworkInputs() + 1);
 
         StreamPartitioner<?> partitioner = edge.getPartitioner();
 
         ResultPartitionType resultPartitionType;
+        // 根据数据交换模型做不同的处理
+        // 最终返回  PIPELINED_BOUNDED 或者  BLOCKING
+        // 如果没有定义,会进行判断全局数据交换模式, 最终确定分区模式
         switch (edge.getExchangeMode()) {
             case PIPELINED:
                 resultPartitionType = ResultPartitionType.PIPELINED_BOUNDED;
@@ -804,13 +833,19 @@ public class StreamingJobGraphGenerator {
         checkAndResetBufferTimeout(resultPartitionType, edge);
 
         JobEdge jobEdge;
+        // 根据不同的分区模式创建JobEdge
+        // 如果分区模式为ForwardPartitioner或RescalePartitioner;
+        // 则使用 POINTWISE分配模式,  否则使用ALL_TO_ALL
         if (partitioner.isPointwise()) {
             jobEdge =
+                    // 创建IntermediateDataSet和JobEdge
                     downStreamVertex.connectNewDataSetAsInput(
+                            // 每个生产子任务都连接到消费任务的一个或多个子任务
                             headVertex, DistributionPattern.POINTWISE, resultPartitionType);
         } else {
             jobEdge =
                     downStreamVertex.connectNewDataSetAsInput(
+                            // 每个生产子任务都与消费任务的子任务相连接
                             headVertex, DistributionPattern.ALL_TO_ALL, resultPartitionType);
         }
         // set strategy name so that web interface can show it.

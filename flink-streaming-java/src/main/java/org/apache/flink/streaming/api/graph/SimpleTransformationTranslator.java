@@ -59,6 +59,7 @@ public abstract class SimpleTransformationTranslator<OUT, T extends Transformati
         checkNotNull(context);
 
         final Collection<Integer> transformedIds =
+                // 模板方法,子类进行实现,
                 translateForStreamingInternal(transformation, context);
         configure(transformation, context);
 

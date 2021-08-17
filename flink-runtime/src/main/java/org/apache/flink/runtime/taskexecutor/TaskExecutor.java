@@ -1099,6 +1099,7 @@ public class TaskExecutor extends RpcEndpoint implements TaskExecutorGateway {
         }
 
         if (job.isConnected()) {
+            // 向jobManager提供slot
             offerSlotsToJobManager(jobId);
         }
 
@@ -1494,6 +1495,7 @@ public class TaskExecutor extends RpcEndpoint implements TaskExecutorGateway {
             final UUID slotOfferId = UUID.randomUUID();
             currentSlotOfferPerJob.put(jobId, slotOfferId);
 
+            // 将指定的slots提供给jobManager
             CompletableFuture<Collection<SlotOffer>> acceptedSlotsFuture =
                     jobMasterGateway.offerSlots(
                             getResourceID(),

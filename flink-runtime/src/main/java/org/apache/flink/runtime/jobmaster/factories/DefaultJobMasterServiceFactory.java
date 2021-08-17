@@ -98,7 +98,7 @@ public class DefaultJobMasterServiceFactory implements JobMasterServiceFactory {
     private JobMasterService internalCreateJobMasterService(
             UUID leaderSessionId, OnCompletionActions onCompletionActions) throws Exception {
 
-        // 启动了一个jobMaster
+        // 启动了一个jobMaster --> 在构建jobMaster的时候会生成ExecutionGraph
         final JobMaster jobMaster =
                 new JobMaster(
                         rpcService,

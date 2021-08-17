@@ -323,6 +323,7 @@ public class AkkaRpcServiceUtils {
             return this;
         }
 
+        @Override
         public AkkaRpcService createAndStart() throws Exception {
             return createAndStart(AkkaRpcService::new);
         }

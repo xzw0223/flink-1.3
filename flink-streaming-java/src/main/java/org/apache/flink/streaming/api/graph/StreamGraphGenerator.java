@@ -820,7 +820,7 @@ public class StreamGraphGenerator {
 
         final TransformationTranslator.Context context =
                 new ContextImpl(this, streamGraph, slotSharingGroup, configuration);
-
+        // 根据执行模式进行转换
         return shouldExecuteInBatchMode
                 ? translator.translateForBatch(transform, context)
                 : translator.translateForStreaming(transform, context);

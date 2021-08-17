@@ -173,15 +173,19 @@ public class DefaultDeclarativeSlotPool implements DeclarativeSlotPool {
         final Collection<SlotOffer> acceptedSlotOffers = new ArrayList<>();
         final Collection<AllocatedSlot> acceptedSlots = new ArrayList<>();
 
+        // 进行分配slot
         for (SlotOffer offer : offers) {
             if (slotPool.containsSlot(offer.getAllocationId())) {
                 // we have already accepted this offer
+                // 如果slotPool中存在这个slot的id
                 acceptedSlotOffers.add(offer);
             } else {
+                // 这里会资源进行匹配,是否分配slot
                 Optional<AllocatedSlot> acceptedSlot =
                         matchOfferWithOutstandingRequirements(
                                 offer, taskManagerLocation, taskManagerGateway);
                 if (acceptedSlot.isPresent()) {
+                    // 如果分配了,那么接收这个slot
                     acceptedSlotOffers.add(offer);
                     acceptedSlots.add(acceptedSlot.get());
                 } else {
@@ -192,6 +196,7 @@ public class DefaultDeclarativeSlotPool implements DeclarativeSlotPool {
             }
         }
 
+        // 将接收的slot添加到slotPool中
         slotPool.addSlots(acceptedSlots, currentTime);
 
         if (!acceptedSlots.isEmpty()) {
@@ -224,6 +229,7 @@ public class DefaultDeclarativeSlotPool implements DeclarativeSlotPool {
 
             increaseAvailableResources(ResourceCounter.withResource(matchedRequirement, 1));
 
+            // 创建了一个分配的slot 提供slot的ts地址
             final AllocatedSlot allocatedSlot =
                     createAllocatedSlot(slotOffer, taskManagerLocation, taskManagerGateway);
 
